@@ -19,14 +19,18 @@ jobs:
         run: |
           set -Eeuo pipefail
           jdksPath="$HOME/.jdks"
-          os="osx-x64"  # 设置为macOS x86 (amd64)架构
+          os="osx-x64"  # 确认是macOS x86 (amd64)架构
           jdkFileName="jbrsdk_jcef-17.0.10-$os-b1207.14"
           jdkFileNameWithExt="$jdkFileName.tar.gz"
           link="https://cache-redirector.jetbrains.com/intellij-jbr/$jdkFileNameWithExt"
+          echo "Downloading JDK from $link"
           curl --location "$link" --create-dirs --output "$jdksPath/$jdkFileNameWithExt"
           tar -xf "$jdksPath/$jdkFileNameWithExt" -C "$jdksPath"
+          echo "JAVA_HOME=$jdksPath/$jdkFileName"
+          ls -la "$jdksPath"
           echo "JAVA_HOME=$jdksPath/$jdkFileName" >> "$GITHUB_ENV"
           echo "PATH=$jdksPath/$jdkFileName/bin:$PATH" >> "$GITHUB_ENV"
+
 
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
