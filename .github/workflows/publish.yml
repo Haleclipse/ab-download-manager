@@ -19,7 +19,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           jdksPath="$HOME/.jdks"
-          os="osx-x64"
+          os="osx-x64"  # 确定为 macOS x86架构
           jdkFileName="jbrsdk_jcef-17.0.10-$os-b1207.14"
           jdkFileNameWithExt="$jdkFileName.tar.gz"
           link="https://cache-redirector.jetbrains.com/intellij-jbr/$jdkFileNameWithExt"
@@ -27,19 +27,30 @@ jobs:
           curl --location "$link" --create-dirs --output "$jdksPath/$jdkFileNameWithExt"
           echo "Downloaded JDK to $jdksPath/$jdkFileNameWithExt"
 
+          echo "Checking contents of $jdksPath"
+          ls -la "$jdksPath"  # 显示 jdksPath 目录内容
+
+          echo "Extracting JDK"
           tar -xf "$jdksPath/$jdkFileNameWithExt" -C "$jdksPath"
-          echo "Extracted JDK to $jdksPath"
-          
-          if [ -d "$jdksPath/$jdkFileName" ]; then
-            echo "JDK directory exists: $jdksPath/$jdkFileName"
+          echo "Extracted JDK contents"
+          ls -la "$jdksPath"  # 显示解压后的 jdksPath 内容
+
+          # 获取实际解压后的目录名(假设目录名是解压结果的第一项)
+          extractedJdkDir=$(tar -tzf "$jdksPath/$jdkFileNameWithExt" | head -1 | cut -f1 -d"/")
+          echo "Extracted JDK Directory: $extractedJdkDir"
+
+          # 检查被解压后的实际目录是否存在
+          if [ -d "$jdksPath/$extractedJdkDir" ]; then
+            echo "JDK directory exists: $jdksPath/$extractedJdkDir"
           else
-            echo "JDK directory does not exist: $jdksPath/$jdkFileName"
+            echo "JDK directory does not exist: $jdksPath/$extractedJdkDir"
             exit 1
           fi
 
-          echo "JAVA_HOME=$jdksPath/$jdkFileName"
-          echo "JAVA_HOME=$jdksPath/$jdkFileName" >> "$GITHUB_ENV"
-          echo "PATH=$jdksPath/$jdkFileName/bin:$PATH" >> "$GITHUB_ENV"
+          echo "Setting JAVA_HOME and PATH"
+          echo "JAVA_HOME=$jdksPath/$extractedJdkDir"
+          echo "JAVA_HOME=$jdksPath/$extractedJdkDir" >> "$GITHUB_ENV"
+          echo "PATH=$jdksPath/$extractedJdkDir/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
