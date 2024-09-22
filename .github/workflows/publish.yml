@@ -19,38 +19,43 @@ jobs:
         run: |
           set -Eeuo pipefail
           jdksPath="$HOME/.jdks"
-          os="osx-x64"  # 确定为 macOS x86架构
+          os="osx-x64"  # 确定为 macOS x86 架构
           jdkFileName="jbrsdk_jcef-17.0.10-$os-b1207.14"
           jdkFileNameWithExt="$jdkFileName.tar.gz"
           link="https://cache-redirector.jetbrains.com/intellij-jbr/$jdkFileNameWithExt"
           echo "Downloading JDK from $link"
-          curl --location "$link" --create-dirs --output "$jdksPath/$jdkFileNameWithExt"
+          curl --fail --location "$link" --output "$jdksPath/$jdkFileNameWithExt"
+          if [[ $? -ne 0 ]]; then
+            echo "Download failed"
+            exit 1
+          fi
           echo "Downloaded JDK to $jdksPath/$jdkFileNameWithExt"
 
           echo "Checking contents of $jdksPath"
-          ls -la "$jdksPath"  # 显示 jdksPath 目录内容
+          ls -la "$jdksPath"  # 显示 jdksPath 目录内容以检查下载的文件
 
           echo "Extracting JDK"
-          tar -xf "$jdksPath/$jdkFileNameWithExt" -C "$jdksPath"
-          echo "Extracted JDK contents"
-          ls -la "$jdksPath"  # 显示解压后的 jdksPath 内容
-
-          # 获取实际解压后的目录名(假设目录名是解压结果的第一项)
-          extractedJdkDir=$(tar -tzf "$jdksPath/$jdkFileNameWithExt" | head -1 | cut -f1 -d"/")
-          echo "Extracted JDK Directory: $extractedJdkDir"
-
-          # 检查被解压后的实际目录是否存在
-          if [ -d "$jdksPath/$extractedJdkDir" ]; then
-            echo "JDK directory exists: $jdksPath/$extractedJdkDir"
-          else
-            echo "JDK directory does not exist: $jdksPath/$extractedJdkDir"
+          tar -xzf "$jdksPath/$jdkFileNameWithExt" -C "$jdksPath"
+          if [[ $? -ne 0 ]]; then
+            echo "Extraction failed"
             exit 1
           fi
+          echo "Extracted JDK contents"
+          ls -la "$jdksPath"  # 显示解压后的 jdksPath 目录内容
 
-          echo "Setting JAVA_HOME and PATH"
-          echo "JAVA_HOME=$jdksPath/$extractedJdkDir"
-          echo "JAVA_HOME=$jdksPath/$extractedJdkDir" >> "$GITHUB_ENV"
-          echo "PATH=$jdksPath/$extractedJdkDir/bin:$PATH" >> "$GITHUB_ENV"
+          echo "Searching for actual JDK directory"
+          actualJdkDir=$(find "$jdksPath" -maxdepth 1 -type d -name 'jbrsdk_jcef-17.0.10*')
+          if [[ -z "$actualJdkDir" ]]; then
+            echo "Failed to locate extracted JDK directory"
+            exit 1
+          fi
+          echo "Found JDK directory: $actualJdkDir"
+
+          echo "Setting JAVA_HOME and updating PATH"
+          echo "JAVA_HOME=$actualJdkDir" >> "$GITHUB_ENV"
+          echo "PATH=$actualJdkDir/bin:$PATH" >> "$GITHUB_ENV"
+          echo "JAVA_HOME is set to $actualJdkDir"
+          echo "Updated PATH"
 
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
