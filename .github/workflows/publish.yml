@@ -2,7 +2,6 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+*"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,6 +15,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'adopt' # Install JDK from AdoptOpenJDK
+          java-version: '17' # Specify the JDK version to install
+          cache: gradle 
+
       - name: Setting up Jetbrains Runtime
         shell: bash
         run: |
@@ -29,6 +36,7 @@ jobs:
           tar -xf "$jdksPath/$jdkFileNameWithExt" -C "$jdksPath"
           echo "JAVA_HOME=$jdksPath/$jdkFileName" >> "$GITHUB_ENV"
           echo "PATH=$jdksPath/$jdkFileName/bin:$PATH" >> "$GITHUB_ENV"
+
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
         with:
@@ -37,41 +45,43 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ matrix.os }}-gradle
           enableCrossOsArchive: true
-      - name: make Gradlew executable
+
+      - name: Make Gradlew Executable
         run: |
           chmod 755 ./gradlew
-        shell: "bash"
+        shell: bash 
+
       - name: Gradle
-#          at the current version of compose plugin
-#          first attempt to init gradle always fails because of "BuildScopeServices has been closed"
-#          remove this after this bug is fixed
+        # At the current version of compose plugin,
+        # the first attempt to init gradle always fails because of "BuildScopeServices has been closed"
+        # Remove this after this bug is fixed
         continue-on-error: true
         run: |
           ./gradlew
-        shell: "bash"
+        shell: bash
 
-      - name: Build package for current OS using gradle
+      - name: Build Package for current OS using Gradle
         shell: bash
         run: |
           ./gradlew desktop:app:createReleaseFolderForCi
 
-      - name: Release Gradle to unlock cache files
+      - name: Release Gradle to Unlock Cache Files
         shell: bash
         run: |
           ./gradlew -stop
 
-      - name: Upload output to artifacts
+      - name: Upload Output to Artifacts
         uses: actions/upload-artifact@v4
         with:
           path: ./build/ci-release
           name: app-${{ matrix.os }}
 
   release:
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     needs: ["create-packages"]
     steps:
-      - uses: "actions/download-artifact@v4"
-        name: "Download All Artifacts Into One Directory"
+      - uses: actions/download-artifact@v4
+        name: Download All Artifacts Into One Directory
         with:
           path: release
           pattern: app-*
@@ -83,9 +93,10 @@ jobs:
         with:
           prefix: "v"
 
-      - name: "Show the output tree of release"
+      - name: Show the Output Tree of Release
         run: |
           tree .
+
       - uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ !steps.version.outputs.is_stable }}
@@ -93,7 +104,8 @@ jobs:
           files: |
             release/binaries/*
           body_path: release/release-notes.md
-      - name: "Remove artifacts to free space"
+
+      - name: Remove Artifacts to Free Space
         uses: geekyeggo/delete-artifact@v5
         with:
           name: app-*
