@@ -19,7 +19,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           jdksPath="$HOME/.jdks"
-          os="macos-amd64"  # 设置为macOS x86 (amd64)架构
+          os="osx-x64"  # 设置为macOS x86 (amd64)架构
           jdkFileName="jbrsdk_jcef-17.0.10-$os-b1207.14"
           jdkFileNameWithExt="$jdkFileName.tar.gz"
           link="https://cache-redirector.jetbrains.com/intellij-jbr/$jdkFileNameWithExt"
