@@ -2,7 +2,7 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+*"
-  workflow_dispatch:
+
 
 permissions:
   contents: write
@@ -11,37 +11,61 @@ jobs:
   create-packages:
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-12"]
+        os: [ "ubuntu-latest" , "windows-latest", "macos-12"]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
       - name: setup jdk
         uses: actions/setup-java@v4
         with:
           distribution: "adopt"
           java-version: "17"
           architecture: x64
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ matrix.os }}-gradle
+          enableCrossOsArchive: true
+      - name: make Gradlew executable
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          chmod 755 ./gradlew
+        shell: "bash"
+      - name: Gradle
+#          at the current version of compose plugin
+#          first attempt to init gradle always fails because of "BuildScopeServices has been closed"
+#          remove this after this bug is fixed
+        continue-on-error: true
+        run: |
+          ./gradlew
+        shell: "bash"
 
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Build package for current OS using gradle
+        shell: bash
+        run: |
+          ./gradlew desktop:app:createReleaseFolderForCi
 
-      - name: grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Release Gradle to unlock cache files
+        shell: bash
+        run: |
+          ./gradlew -stop
 
-      - name: packageReleaseDistributionForCurrentOS
-        run: ./gradlew desktop:app:createReleaseFolderForCi
-
-      - name: Upload Output to Artifacts
+      - name: Upload output to artifacts
         uses: actions/upload-artifact@v4
         with:
           path: ./build/ci-release
           name: app-${{ matrix.os }}
 
   release:
-    runs-on: ubuntu-latest
+    runs-on: "ubuntu-latest"
     needs: ["create-packages"]
     steps:
-      - uses: actions/download-artifact@v4
-        name: Download All Artifacts Into One Directory
+      - uses: "actions/download-artifact@v4"
+        name: "Download All Artifacts Into One Directory"
         with:
           path: release
           pattern: app-*
@@ -53,17 +77,9 @@ jobs:
         with:
           prefix: "v"
 
-      - name: Show the Output Tree of Release
+      - name: "Show the output tree of release"
         run: |
           tree .
-
-      - name: Create Git Tag
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a v${{ steps.version.outputs.version }} -m "Release v${{ steps.version.outputs.version }}"
-          git push origin v${{ steps.version.outputs.version }}
-
       - uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ !steps.version.outputs.is_stable }}
@@ -71,8 +87,7 @@ jobs:
           files: |
             release/binaries/*
           body_path: release/release-notes.md
-
-      - name: Remove Artifacts to Free Space
+      - name: "Remove artifacts to free space"
         uses: geekyeggo/delete-artifact@v5
         with:
           name: app-*
