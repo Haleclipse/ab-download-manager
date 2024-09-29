@@ -24,29 +24,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setting up Jetbrains Runtime
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          jdksPath="$HOME/.jdks"
-          os="osx-x64"
-          jdkFileName="jbrsdk_jcef-17.0.10-$os-b1207.14"
-          jdkFileNameWithExt="$jdkFileName.tar.gz"
-          link="https://cache-redirector.jetbrains.com/intellij-jbr/$jdkFileNameWithExt"
-          curl --location "$link" --create-dirs --output "$jdksPath/$jdkFileNameWithExt"
-          tar -xf "$jdksPath/$jdkFileNameWithExt" -C "$jdksPath"
-          echo "JAVA_HOME=$jdksPath/$jdkFileName" >> "$GITHUB_ENV"
-          echo "PATH=$jdksPath/$jdkFileName/bin:$PATH" >> "$GITHUB_ENV"
-
-      - name: Cache Gradle Dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ matrix.os }}-gradle
-          enableCrossOsArchive: true
-
       - name: grant execute permission for gradlew
         run: chmod +x gradlew
 
