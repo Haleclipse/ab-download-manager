@@ -28,7 +28,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: packageReleaseDistributionForCurrentOS
-        run: ./gradlew packageReleaseDistributionForCurrentOS
+        run: ./gradlew desktop:app:createReleaseFolderForCi
 
       # - name: Make Gradlew Executable
       #   run: |
