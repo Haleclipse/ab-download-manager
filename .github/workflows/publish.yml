@@ -11,18 +11,26 @@ jobs:
   create-packages:
     strategy:
       matrix:
-        os: [ "ubuntu-latest", "windows-latest", "macos-latest" ]
+        os: ["macos-10.15"]
     runs-on: ${{ matrix.os }}
     steps:
+      - if: matrix.os == 'macos-14'
+        name: setup jdk
+        uses: actions/setup-java@v4
+        with:
+          distribution: "adopt"
+          java-version: "17"
+          architecture: x64
+
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setting up Jetbrains Runtime
         shell: bash
         run: |
           set -Eeuo pipefail
           jdksPath="$HOME/.jdks"
-          os=$(echo "${{ runner.os }}-${{ runner.arch }}" | tr "[:upper:]" "[:lower:]")
+          os="osx-x64"
           jdkFileName="jbrsdk_jcef-17.0.10-$os-b1207.14"
           jdkFileNameWithExt="$jdkFileName.tar.gz"
           link="https://cache-redirector.jetbrains.com/intellij-jbr/$jdkFileNameWithExt"
@@ -40,40 +48,48 @@ jobs:
           key: ${{ matrix.os }}-gradle
           enableCrossOsArchive: true
 
-      - name: Make Gradlew executable
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          chmod 755 ./gradlew
-        shell: "bash"
+      - name: grant execute permission for gradlew
+        run: chmod +x gradlew
 
-      - name: Gradle
-        continue-on-error: true
-        run: |
-          ./gradlew
-        shell: "bash"
+      - name: packageReleaseDistributionForCurrentOS
+        run: ./gradlew packageReleaseDistributionForCurrentOS
 
-      - name: Build package for current OS using gradle
-        shell: bash
-        run: |
-          ./gradlew desktop:app:createReleaseFolderForCi
+      # - name: Make Gradlew Executable
+      #   run: |
+      #     chmod 755 ./gradlew
+      #   shell: bash 
 
-      - name: Release Gradle to unlock cache files
-        shell: bash
-        run: |
-          ./gradlew -stop
+      # - name: Gradle
+      #   # At the current version of compose plugin,
+      #   # the first attempt to init gradle always fails because of "BuildScopeServices has been closed"
+      #   # Remove this after this bug is fixed
+      #   continue-on-error: true
+      #   run: |
+      #     ./gradlew
+      #   shell: bash
 
-      - name: Upload output to artifacts
+      # - name: Build Package for current OS using Gradle
+      #   shell: bash
+      #   run: |
+      #     ./gradlew desktop:app:createReleaseFolderForCi
+
+      # - name: Release Gradle to Unlock Cache Files
+      #   shell: bash
+      #   run: |
+      #     ./gradlew -stop
+
+      - name: Upload Output to Artifacts
         uses: actions/upload-artifact@v4
         with:
           path: ./build/ci-release
           name: app-${{ matrix.os }}
 
   release:
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     needs: ["create-packages"]
     steps:
-      - uses: "actions/download-artifact@v4"
-        name: "Download All Artifacts Into One Directory"
+      - uses: actions/download-artifact@v4
+        name: Download All Artifacts Into One Directory
         with:
           path: release
           pattern: app-*
@@ -85,7 +101,7 @@ jobs:
         with:
           prefix: "v"
 
-      - name: "Show the output tree of release"
+      - name: Show the Output Tree of Release
         run: |
           tree .
 
@@ -97,7 +113,7 @@ jobs:
             release/binaries/*
           body_path: release/release-notes.md
 
-      - name: "Remove artifacts to free space"
+      - name: Remove Artifacts to Free Space
         uses: geekyeggo/delete-artifact@v5
         with:
           name: app-*
