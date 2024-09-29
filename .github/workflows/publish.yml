@@ -24,11 +24,9 @@ jobs:
           java-version: "17"
           architecture: x64
 
-      - name: make Gradlew executable
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          chmod 755 ./gradlew
-        shell: "bash"
+      - name: grant execute permission for gradlew
+        run: chmod +x gradlew
+
       - name: make Gradlew executable
         if: matrix.os == 'ubuntu-latest'
         run: |
