@@ -30,30 +30,6 @@ jobs:
       - name: packageReleaseDistributionForCurrentOS
         run: ./gradlew desktop:app:createReleaseFolderForCi
 
-      # - name: Make Gradlew Executable
-      #   run: |
-      #     chmod 755 ./gradlew
-      #   shell: bash 
-
-      # - name: Gradle
-      #   # At the current version of compose plugin,
-      #   # the first attempt to init gradle always fails because of "BuildScopeServices has been closed"
-      #   # Remove this after this bug is fixed
-      #   continue-on-error: true
-      #   run: |
-      #     ./gradlew
-      #   shell: bash
-
-      # - name: Build Package for current OS using Gradle
-      #   shell: bash
-      #   run: |
-      #     ./gradlew desktop:app:createReleaseFolderForCi
-
-      # - name: Release Gradle to Unlock Cache Files
-      #   shell: bash
-      #   run: |
-      #     ./gradlew -stop
-
       - name: Upload Output to Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -80,6 +56,13 @@ jobs:
       - name: Show the Output Tree of Release
         run: |
           tree .
+
+      - name: Create Git Tag
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a v${{ steps.version.outputs.version }} -m "Release v${{ steps.version.outputs.version }}"
+          git push origin v${{ steps.version.outputs.version }}
 
       - uses: softprops/action-gh-release@v2
         with:
