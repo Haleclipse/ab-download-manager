@@ -20,11 +20,14 @@ import com.abdownloadmanager.desktop.ui.theme.myTextSizes
 import com.abdownloadmanager.desktop.ui.util.ifThen
 import com.abdownloadmanager.desktop.ui.widget.*
 import com.abdownloadmanager.desktop.utils.div
+import com.abdownloadmanager.resources.Res
 import com.abdownloadmanager.utils.compose.WithContentAlpha
 import com.abdownloadmanager.utils.compose.widget.MyIcon
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.core.FileKitPlatformSettings
 import ir.amirab.util.compose.IconSource
+import ir.amirab.util.compose.asStringSource
+import ir.amirab.util.compose.resources.myStringResource
 import ir.amirab.util.desktop.LocalWindow
 import java.io.File
 
@@ -33,8 +36,13 @@ fun NewCategory(
     categoryComponent: CategoryComponent,
 ) {
     WindowTitle(
-        if (categoryComponent.isEditMode) "Edit Category"
-        else "Add Category"
+        myStringResource(
+            if (categoryComponent.isEditMode) {
+                Res.string.edit_category
+            } else {
+                Res.string.add_category
+            }
+        )
     )
     Column(
         modifier = Modifier
@@ -74,16 +82,20 @@ fun NewCategory(
             CategoryDefaultPath(
                 path = categoryComponent.path.collectAsState().value,
                 onPathChanged = categoryComponent::setPath,
-                defaultDownloadLocation = categoryComponent.defaultDownloadLocation.collectAsState().value
+                defaultDownloadLocation = categoryComponent.defaultDownloadLocation.collectAsState().value,
+                checked = categoryComponent.usePath.collectAsState().value,
+                setChecked = categoryComponent::setUsePath
             )
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().wrapContentWidth(Alignment.End)) {
             ActionButton(
-                when (categoryComponent.isEditMode) {
-                    true -> "Change"
-                    false -> "Add"
-                },
+                myStringResource(
+                    when (categoryComponent.isEditMode) {
+                        true -> Res.string.change
+                        false -> Res.string.add
+                    }
+                ),
                 enabled = categoryComponent.canSubmit.collectAsState().value,
                 onClick = {
                     categoryComponent.submit()
@@ -91,7 +103,7 @@ fun NewCategory(
             )
             Spacer(Modifier.width(8.dp))
             ActionButton(
-                "Cancel",
+                myStringResource(Res.string.cancel),
                 onClick = {
                     categoryComponent.close()
                 }
@@ -105,6 +117,8 @@ fun CategoryDefaultPath(
     defaultDownloadLocation: String,
     path: String,
     onPathChanged: (String) -> Unit,
+    checked: Boolean,
+    setChecked: (Boolean) -> Unit,
 ) {
     val initialDirectory = remember(path, defaultDownloadLocation) {
         path
@@ -116,7 +130,7 @@ fun CategoryDefaultPath(
             } ?: defaultDownloadLocation
     }
     val downloadFolderPickerLauncher = rememberDirectoryPickerLauncher(
-        title = "Category Download Location",
+        title = myStringResource(Res.string.category_download_location),
         initialDirectory = initialDirectory,
         platformSettings = FileKitPlatformSettings(
             parentWindow = LocalWindow.current
@@ -125,18 +139,24 @@ fun CategoryDefaultPath(
         directory?.path?.let(onPathChanged)
     }
 
-    WithLabel(
-        "Category Download Location",
-        helpText = """When this category chosen in "Add Download Page" use this directory as "Download Location"""
+    OptionalWithLabel(
+        label = myStringResource(Res.string.category_download_location),
+        helpText = myStringResource(Res.string.category_download_location_description),
+        enabled = checked,
+        setEnabled = setChecked,
     ) {
         CategoryPageTextField(
             text = path,
             onTextChange = onPathChanged,
             modifier = Modifier.fillMaxWidth(),
+            enabled = checked,
             placeholder = "",
             errorText = null,
             end = {
-                MyTextFieldIcon(MyIcons.folder) {
+                MyTextFieldIcon(
+                    MyIcons.folder,
+                    enabled = checked,
+                ) {
                     downloadFolderPickerLauncher.launch()
                 }
             }
@@ -150,14 +170,14 @@ fun CategoryAutoTypes(
     onTypesChanged: (String) -> Unit,
 ) {
     WithLabel(
-        label = "Category file types",
-        helpText = "Automatically put these file types to this category. (when you add new download)\nSeparate file extensions with space (ext1 ext2 ...) "
+        label = myStringResource(Res.string.category_file_types),
+        helpText = myStringResource(Res.string.category_file_types_description)
     ) {
         CategoryPageTextField(
             text = types,
             onTextChange = onTypesChanged,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = "ext1 ext2 ext3 (separate with space)",
+            placeholder = "ext1 ext2 ext3",
             singleLine = false,
         )
     }
@@ -171,8 +191,8 @@ fun CategoryAutoUrls(
     onUrlPatternChanged: (String) -> Unit,
 ) {
     OptionalWithLabel(
-        label = "URL patterns",
-        helpText = "Automatically put download from these URLs to this category. (when you add new download)\nSeparate URLs with space, you can also use * for wildcard",
+        label = myStringResource(Res.string.category_url_patterns),
+        helpText = myStringResource(Res.string.category_url_patterns_description),
         enabled = enabled,
         setEnabled = setEnabled
     ) {
@@ -194,7 +214,7 @@ fun CategoryName(
     modifier: Modifier = Modifier,
 ) {
     WithLabel(
-        "Category Name",
+        myStringResource(Res.string.category_name),
         modifier,
     ) {
         CategoryPageTextField(
@@ -266,7 +286,7 @@ private fun CategoryIcon(
         mutableStateOf(false)
     }
     WithLabel(
-        "Icon"
+        myStringResource(Res.string.icon)
     ) {
         RenderIcon(
             icon = iconSource,

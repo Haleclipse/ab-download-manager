@@ -20,6 +20,7 @@ object MyIcons : IMyIcons {
     override val windowClose get() = "/icons/window_close.svg".asIconSource()
 
     override val exit get() = "/icons/exit.svg".asIconSource()
+    override val edit get() = "/icons/edit.svg".asIconSource()
     override val undo get() = "/icons/undo.svg".asIconSource()
 
     override val openSource: IconSource get() = "/icons/open_source.svg".asIconSource()
@@ -88,6 +89,7 @@ override val back get() = "/icons/back.svg".asIconSource()
     override val appearance: IconSource get() = "/icons/color.svg".asIconSource()
     override val downloadEngine: IconSource get() = "/icons/down_speed.svg".asIconSource()
     override val network: IconSource get() = "/icons/network.svg".asIconSource()
+    override val language: IconSource get() = "/icons/language.svg".asIconSource()
 
     override val externalLink: IconSource get() = "/icons/external_link.svg".asIconSource()
 }

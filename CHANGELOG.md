@@ -14,6 +14,59 @@
 
 ### Security
 
+## 1.4.2
+
+### Added
+
+- Edit Download Page (Rename, Refresh links/credentials etc…)
+- Translators Credit Page
+- Traditional Chinese Language
+- Spanish Language
+- French Language
+- Turkish Language
+
+### Changed
+
+- Updated translations
+
+## 1.4.1
+
+### Added
+
+- Portuguese (Brazilian) Language
+
+### Changed
+
+- Updated some languages
+
+### Fixed
+
+- Language names not shown by their native names
+- Selected language not saved properly
+- Wrong text for "Close" button in "Batch Download" page
+
+## 1.4.0
+
+### Added
+
+- Localization Support
+- Persian Language
+- Arabic Language
+- Chinese (Simplified) Language
+- Ukrainian Language
+- Russian Language
+- Albanian Language
+- Bengali Language
+
+### Changed
+
+- Category Download Location is now optional
+
+### Fixed
+
+- A bug in Download Engine
+- "Add Queue" page will be shown properly when opened from "Import List" page
+
 ## 1.3.0
 
 ### Added

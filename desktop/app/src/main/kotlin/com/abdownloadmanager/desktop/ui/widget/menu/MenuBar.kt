@@ -33,6 +33,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import ir.amirab.util.compose.modifiers.autoMirror
 import javax.swing.KeyStroke
 
 enum class MenuDisabledItemBehavior {
@@ -76,21 +77,9 @@ fun MenuBar(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                         .wrapContentHeight(Alignment.CenterVertically)
                 ) {
-                    val text = subMenu.title.collectAsState().value
-                    val (firstChar, leadingText) = remember(text) {
-                        when (text.length) {
-                            0 -> "" to ""
-                            1 -> text to ""
-                            else -> text.first().toString() to text.substring(1)
-                        }
-                    }
+                    val text = subMenu.title.collectAsState().value.rememberString()
                     Text(
-                        buildAnnotatedString {
-                            withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
-                                append(firstChar)
-                            }
-                            append(leadingText)
-                        },
+                        text = text,
                         maxLines = 1,
                         fontSize = myTextSizes.base,
                         color = myColors.onBackground,
@@ -248,7 +237,7 @@ private fun ReactableItem(
             }
         }
         Text(
-            title,
+            title.rememberString(),
             Modifier.weight(1f),
             fontSize = myTextSizes.base,
             softWrap = false,
@@ -332,7 +321,9 @@ fun RenderSubMenuItem(
             MyIcon(
                 MyIcons.next,
                 null,
-                Modifier.size(16.dp),
+                Modifier
+                    .size(16.dp)
+                    .autoMirror(),
             )
         })
     if (openedItem == menuItem) {

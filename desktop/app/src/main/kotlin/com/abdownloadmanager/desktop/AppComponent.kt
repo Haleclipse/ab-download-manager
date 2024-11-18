@@ -7,6 +7,7 @@ import com.abdownloadmanager.desktop.pages.addDownload.single.AddSingleDownloadC
 import com.abdownloadmanager.desktop.pages.batchdownload.BatchDownloadComponent
 import com.abdownloadmanager.desktop.pages.category.CategoryComponent
 import com.abdownloadmanager.desktop.pages.category.CategoryDialogManager
+import com.abdownloadmanager.desktop.pages.editdownload.EditDownloadComponent
 import com.abdownloadmanager.desktop.pages.home.HomeComponent
 import com.abdownloadmanager.desktop.pages.queue.QueuesComponent
 import com.abdownloadmanager.desktop.pages.settings.SettingsComponent
@@ -37,9 +38,15 @@ import ir.amirab.downloader.utils.ExceptionUtils
 import ir.amirab.downloader.utils.OnDuplicateStrategy
 import com.abdownloadmanager.integration.Integration
 import com.abdownloadmanager.integration.IntegrationResult
+import com.abdownloadmanager.resources.*
 import com.abdownloadmanager.utils.category.CategoryManager
 import com.abdownloadmanager.utils.category.CategorySelectionMode
 import ir.amirab.downloader.exception.TooManyErrorException
+import ir.amirab.downloader.monitor.isDownloadActiveFlow
+import ir.amirab.util.compose.StringSource
+import ir.amirab.util.compose.asStringSource
+import ir.amirab.util.compose.combineStringSources
+import ir.amirab.util.flow.mapStateFlow
 import ir.amirab.util.osfileutil.FileUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -56,8 +63,8 @@ sealed interface AppEffects {
 }
 
 interface NotificationSender {
-    fun sendDialogNotification(title: String, description: String, type: MessageDialogType)
-    fun sendNotification(tag: Any, title: String, description: String, type: NotificationType)
+    fun sendDialogNotification(title: StringSource, description: StringSource, type: MessageDialogType)
+    fun sendNotification(tag: Any, title: StringSource, description: StringSource, type: NotificationType)
 }
 
 class AppComponent(
@@ -66,6 +73,7 @@ class AppComponent(
     DownloadDialogManager,
     AddDownloadDialogManager,
     CategoryDialogManager,
+    EditDownloadDialogManager,
     NotificationSender,
     DownloadItemOpener,
     ContainsEffects<AppEffects> by supportEffects(),
@@ -108,6 +116,7 @@ class AppComponent(
                 addDownloadDialogManager = this,
                 categoryDialogManager = this,
                 notificationSender = this,
+                editDownloadDialogManager = this,
             )
         }
     ).subscribeAsStateFlow()
@@ -146,6 +155,43 @@ class AppComponent(
         }
     ).subscribeAsStateFlow()
 
+    private val editDownload = SlotNavigation<Long>()
+    val editDownloadSlot = childSlot(
+        editDownload,
+        serializer = null,
+        key = "editDownload",
+        childFactory = { editDownloadConfig: Long, componentContext: ComponentContext ->
+            EditDownloadComponent(
+                ctx = componentContext,
+                onRequestClose = {
+                    closeEditDownloadDialog()
+                },
+                onEdited = {
+                    scope.launch {
+                        downloadSystem.editDownload(it)
+                        closeEditDownloadDialog()
+                    }
+                },
+                downloadId = editDownloadConfig,
+                acceptEdit = downloadSystem.downloadMonitor
+                    .isDownloadActiveFlow(editDownloadConfig)
+                    .mapStateFlow { !it },
+            )
+        }
+    ).subscribeAsStateFlow()
+
+    override fun openEditDownloadDialog(id: Long) {
+        val currentComponent = editDownloadSlot.value.child?.instance
+        if (currentComponent != null && currentComponent.downloadId == id) {
+            currentComponent.bringToFront()
+        } else {
+            editDownload.activate(id)
+        }
+    }
+
+    override fun closeEditDownloadDialog() {
+        editDownload.dismiss()
+    }
 
     fun openSettings() {
         scope.launch {
@@ -365,14 +411,14 @@ class AppComponent(
             }.launchIn(scope)
     }
 
-    override fun sendNotification(tag: Any, title: String, description: String, type: NotificationType) {
+    override fun sendNotification(tag: Any, title: StringSource, description: StringSource, type: NotificationType) {
         beep()
         showNotification(tag = tag, title = title, description = description, type = type)
     }
 
     override fun sendDialogNotification(
-        title: String,
-        description: String,
+        title: StringSource,
+        description: StringSource,
         type: MessageDialogType,
     ) {
         beep()
@@ -387,8 +433,8 @@ class AppComponent(
 
     private fun showNotification(
         tag: Any,
-        title: String,
-        description: String,
+        title: StringSource,
+        description: StringSource,
         type: NotificationType = NotificationType.Info,
     ) {
         sendEffect(
@@ -418,9 +464,9 @@ class AppComponent(
                     is IntegrationResult.Fail -> {
                         IntegrationPortBroadcaster.setIntegrationPortInFile(null)
                         sendDialogNotification(
-                            title = "Can't run browser integration",
+                            title = Res.string.cant_run_browser_integration.asStringSource(),
                             type = MessageDialogType.Error,
-                            description = it.throwable.localizedMessage
+                            description = it.throwable.localizedMessage.asStringSource()
                         )
                     }
 
@@ -467,20 +513,20 @@ class AppComponent(
                 "Too Many Error: "
             } else {
                 "Error: "
-            }
-            val reason = actualCause.message ?: "Unknown"
+            }.asStringSource()
+            val reason = actualCause.message?.asStringSource() ?: Res.string.unknown.asStringSource()
             sendNotification(
                 "downloadId=${it.downloadItem.id}",
-                title = it.downloadItem.name,
-                description = prefix + reason,
+                title = it.downloadItem.name.asStringSource(),
+                description = listOf(prefix, reason).combineStringSources(),
                 type = NotificationType.Error,
             )
         }
         if (it is DownloadManagerEvents.OnJobCompleted) {
             sendNotification(
                 tag = "downloadId=${it.downloadItem.id}",
-                title = it.downloadItem.name,
-                description = "Finished",
+                title = it.downloadItem.name.asStringSource(),
+                description = Res.string.finished.asStringSource(),
                 type = NotificationType.Success,
             )
         }
@@ -490,9 +536,9 @@ class AppComponent(
         val item = downloadSystem.getDownloadItemById(id)
         if (item == null) {
             sendNotification(
-                "Open File",
-                "Can't open file",
-                "Download Item not found",
+                Res.string.open_file,
+                Res.string.cant_open_file.asStringSource(),
+                Res.string.download_item_not_found.asStringSource(),
                 NotificationType.Error,
             )
             return
@@ -505,9 +551,9 @@ class AppComponent(
             FileUtils.openFile(downloadSystem.getDownloadFile(downloadItem))
         }.onFailure {
             sendNotification(
-                "Open File",
-                "Can't open file",
-                it.localizedMessage ?: "Unknown Error",
+                Res.string.open_file,
+                Res.string.cant_open_file.asStringSource(),
+                it.localizedMessage?.asStringSource() ?: Res.string.unknown_error.asStringSource(),
                 NotificationType.Error,
             )
             println("Can't open file:${it.message}")
@@ -518,9 +564,9 @@ class AppComponent(
         val item = downloadSystem.getDownloadItemById(id)
         if (item == null) {
             sendNotification(
-                "Open Folder",
-                "Can't open folder",
-                "Download Item not found",
+                Res.string.open_folder,
+                Res.string.cant_open_folder.asStringSource(),
+                Res.string.download_item_not_found.asStringSource(),
                 NotificationType.Error,
             )
             return
@@ -533,12 +579,24 @@ class AppComponent(
             FileUtils.openFolderOfFile(downloadSystem.getDownloadFile(downloadItem))
         }.onFailure {
             sendNotification(
-                "Open Folder",
-                "Can't open folder",
-                it.localizedMessage ?: "Unknown Error",
+                Res.string.open_folder,
+                Res.string.cant_open_folder.asStringSource(),
+                it.localizedMessage?.asStringSource() ?: Res.string.unknown_error.asStringSource(),
                 NotificationType.Error,
             )
             println("Can't open folder:${it.message}")
+        }
+    }
+
+    fun externalCredentialComingIntoApp(list: List<DownloadCredentials>) {
+        val editDownloadComponent = editDownloadSlot.value.child?.instance
+        if (editDownloadComponent != null) {
+            list.firstOrNull()?.let {
+                editDownloadComponent.importCredential(it)
+                editDownloadComponent.bringToFront()
+            }
+        } else {
+            openAddDownloadDialog(list)
         }
     }
 
@@ -685,6 +743,14 @@ class AppComponent(
         showOpenSourceLibraries.update { false }
     }
 
+    fun openTranslatorsPage() {
+        showTranslators.update { true }
+    }
+
+    fun closeTranslatorsPage() {
+        showTranslators.update { false }
+    }
+
     fun openQueues() {
         scope.launch {
             showQueuesSlot.value.child?.instance.let {
@@ -762,6 +828,7 @@ class AppComponent(
 //    val updater = UpdateComponent(childContext("updater"))
     val showAboutPage = MutableStateFlow(false)
     val showOpenSourceLibraries = MutableStateFlow(false)
+    val showTranslators = MutableStateFlow(false)
     val theme = appRepository.theme
 //    val uiScale = appRepository.uiScale
 }
@@ -770,6 +837,11 @@ interface DownloadDialogManager {
     val openedDownloadDialogs: StateFlow<List<SingleDownloadComponent>>
     fun openDownloadDialog(id: Long)
     fun closeDownloadDialog(id: Long)
+}
+
+interface EditDownloadDialogManager {
+    fun openEditDownloadDialog(id: Long)
+    fun closeEditDownloadDialog()
 }
 
 interface AddDownloadDialogManager {

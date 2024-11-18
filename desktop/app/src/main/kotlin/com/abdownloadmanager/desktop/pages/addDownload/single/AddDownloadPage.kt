@@ -32,8 +32,10 @@ import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.*
 import com.abdownloadmanager.desktop.pages.addDownload.shared.*
 import com.abdownloadmanager.desktop.utils.mvi.HandleEffects
-import com.abdownloadmanager.utils.category.rememberIconPainter
+import com.abdownloadmanager.resources.Res
+import ir.amirab.util.compose.resources.myStringResource
 import ir.amirab.downloader.utils.OnDuplicateStrategy
+import ir.amirab.util.compose.asStringSource
 import java.awt.MouseInfo
 
 @Composable
@@ -96,7 +98,7 @@ fun AddDownloadPage(
                             onValueChange = { component.setUseCategory(it) }
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Use Category")
+                        Text(myStringResource(Res.string.use_category))
                     }
                     Spacer(Modifier.width(8.dp))
                     CategorySelect(
@@ -125,7 +127,7 @@ fun AddDownloadPage(
                         component.setFolder(it)
                     },
                     errorText = when (canAddResult) {
-                        CanAddResult.CantWriteInThisFolder -> "Can't write to this folder"
+                        CanAddResult.CantWriteInThisFolder -> myStringResource(Res.string.cant_write_to_this_folder)
                         else -> null
                     },
                     lastUsedLocations = component.lastUsedLocations.collectAsState().value
@@ -140,13 +142,13 @@ fun AddDownloadPage(
                     errorText = when (canAddResult) {
                         is CanAddResult.DownloadAlreadyExists -> {
                             if (onDuplicateStrategy == null) {
-                                "File name already exists"
+                                myStringResource(Res.string.file_name_already_exists)
                             } else {
                                 null
                             }
                         }
 
-                        CanAddResult.InvalidFileName -> "Invalid filename"
+                        CanAddResult.InvalidFileName -> myStringResource(Res.string.invalid_file_name)
                         else -> null
                     }.takeIf { name.isNotEmpty() }
                 )
@@ -178,7 +180,10 @@ fun AddDownloadPage(
             )
         }
         if (component.showMoreSettings) {
-            ExtraConfig(component)
+            ExtraConfig(
+                onDismiss = { component.showMoreSettings = false },
+                configurables = component.configurables,
+            )
         }
     }
 }
@@ -237,14 +242,14 @@ private fun ShowSolutionsOnDuplicateDownload(component: AddSingleDownloadCompone
                             Modifier.padding(16.dp)
                         ) {
                             Text(
-                                "Select a solution",
+                                myStringResource(Res.string.select_a_solution),
                                 Modifier,
                                 fontSize = myTextSizes.base
                             )
                             Spacer(Modifier.height(8.dp))
                             WithContentAlpha(0.75f) {
                                 Text(
-                                    "The link you provided is already in download lists please specify what you want to do",
+                                    myStringResource(Res.string.select_download_strategy_description),
                                     Modifier,
                                     fontSize = myTextSizes.sm,
                                 )
@@ -262,24 +267,24 @@ private fun ShowSolutionsOnDuplicateDownload(component: AddSingleDownloadCompone
                         Column {
                             OnDuplicateStrategySolutionItem(
                                 isSelected = onDuplicateStrategy == OnDuplicateStrategy.AddNumbered,
-                                title = "Add a numbered file",
-                                description = "Add an index after the end of download file name",
+                                title = myStringResource(Res.string.download_strategy_add_a_numbered_file),
+                                description = myStringResource(Res.string.download_strategy_add_a_numbered_file_description),
                             ) {
                                 component.setOnDuplicateStrategy(OnDuplicateStrategy.AddNumbered)
                                 close()
                             }
                             OnDuplicateStrategySolutionItem(
                                 isSelected = onDuplicateStrategy == OnDuplicateStrategy.OverrideDownload,
-                                title = "Override existing file",
-                                description = "Remove existing download and write to that file",
+                                title = myStringResource(Res.string.download_strategy_override_existing_file),
+                                description = myStringResource(Res.string.download_strategy_override_existing_file_description),
                             ) {
                                 component.setOnDuplicateStrategy(OnDuplicateStrategy.OverrideDownload)
                                 close()
                             }
                             OnDuplicateStrategySolutionItem(
                                 isSelected = null,
-                                title = "Show downloaded file",
-                                description = "Show already existing download item , so you can press on resume or open it",
+                                title = myStringResource(Res.string.download_strategy_show_downloaded_file),
+                                description = myStringResource(Res.string.download_strategy_show_downloaded_file_description),
                             ) {
                                 component.openDownloadFileForCurrentLink()
                                 close()
@@ -432,13 +437,13 @@ private fun PrimaryMainConfigActionButton(
 fun ConfigActionsButtons(component: AddSingleDownloadComponent) {
     val responseInfo by component.linkResponseInfo.collectAsState()
     Row {
-        IconActionButton(MyIcons.refresh, "Refresh") {
+        IconActionButton(MyIcons.refresh, myStringResource(Res.string.refresh)) {
             component.refresh()
         }
         Spacer(Modifier.width(6.dp))
         IconActionButton(
             MyIcons.settings,
-            "Settings",
+            myStringResource(Res.string.settings),
             indicateActive = component.showMoreSettings,
             requiresAttention = responseInfo?.requireBasicAuth ?: false
         ) {
@@ -454,14 +459,14 @@ private fun MainActionButtons(component: AddSingleDownloadComponent) {
         val canAddResult by component.canAddResult.collectAsState()
         if (canAddResult is CanAddResult.DownloadAlreadyExists && onDuplicateStrategy == null) {
             MainConfigActionButton(
-                text = "Show solutions...",
+                text = myStringResource(Res.string.show_solutions),
                 modifier = Modifier,
                 onClick = { component.showSolutionsOnDuplicateDownloadUi = true },
             )
             if (component.shouldShowOpenFile.collectAsState().value) {
                 Spacer(Modifier.width(8.dp))
                 MainConfigActionButton(
-                    text = "Open File",
+                    text = myStringResource(Res.string.open_file),
                     modifier = Modifier,
                     onClick = { component.openExistingFile() },
                 )
@@ -469,7 +474,7 @@ private fun MainActionButtons(component: AddSingleDownloadComponent) {
         } else {
             val canAddToDownloads by component.canAddToDownloads.collectAsState()
             MainConfigActionButton(
-                text = "Add",
+                text = myStringResource(Res.string.add),
                 modifier = Modifier,
                 enabled = canAddToDownloads,
                 onClick = {
@@ -478,7 +483,7 @@ private fun MainActionButtons(component: AddSingleDownloadComponent) {
             )
             Spacer(Modifier.width(8.dp))
             PrimaryMainConfigActionButton(
-                text = "Download",
+                text = myStringResource(Res.string.download),
                 modifier = Modifier,
                 enabled = canAddToDownloads,
                 onClick = {
@@ -488,7 +493,7 @@ private fun MainActionButtons(component: AddSingleDownloadComponent) {
             if (onDuplicateStrategy != null) {
                 Spacer(Modifier.width(8.dp))
                 MainConfigActionButton(
-                    text = "Change solution",
+                    text = myStringResource(Res.string.change_solution),
                     modifier = Modifier,
                     onClick = { component.showSolutionsOnDuplicateDownloadUi = true },
                 )
@@ -499,7 +504,7 @@ private fun MainActionButtons(component: AddSingleDownloadComponent) {
         Spacer(Modifier.weight(1f))
 
         MainConfigActionButton(
-            text = "Cancel",
+            text = myStringResource(Res.string.cancel),
             modifier = Modifier,
             onClick = {
                 component.onRequestClose()
@@ -558,10 +563,10 @@ fun RenderFileTypeAndSize(
                                 }.takeIf {
                                     // this is a length of a html page (error)
                                     fileInfo.isSuccessFul
-                                } ?: "unknown"
+                                } ?: Res.string.unknown.asStringSource()
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    size,
+                                    size.rememberString(),
                                     fontSize = myTextSizes.sm,
                                 )
                             } else {
@@ -588,12 +593,13 @@ fun getExtension(s: String): String? {
 @Composable
 fun MyTextFieldIcon(
     icon: IconSource,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     MyIcon(icon, null, Modifier
         .pointerHoverIcon(PointerIcon.Default)
         .fillMaxHeight()
-        .clickable { onClick() }
+        .clickable(enabled = enabled, onClick = onClick)
         .wrapContentHeight()
         .padding(horizontal = 8.dp)
         .size(16.dp))
@@ -609,7 +615,7 @@ private fun UrlTextField(
     AddDownloadPageTextField(
         text,
         setText,
-        "Download link",
+        myStringResource(Res.string.download_link),
         modifier = modifier.fillMaxWidth(),
         end = {
             MyTextFieldIcon(MyIcons.paste) {
@@ -632,7 +638,7 @@ private fun NameTextField(
     AddDownloadPageTextField(
         text,
         setText,
-        "Name",
+        myStringResource(Res.string.name),
         modifier = Modifier.fillMaxWidth(),
         errorText = errorText,
     )

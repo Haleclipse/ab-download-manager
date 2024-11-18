@@ -71,6 +71,7 @@ dependencies {
     implementation(project(":shared:updater"))
     implementation(project(":shared:auto-start"))
     implementation(project(":shared:nanohttp4k"))
+    implementation(project(":shared:resources"))
 }
 
 aboutLibraries {
@@ -197,6 +198,12 @@ buildConfig {
         "PROJECT_SOURCE_CODE",
         provider {
             "https://github.com/amir1376/ab-download-manager"
+        }
+    )
+    buildConfigField(
+        "PROJECT_TRANSLATIONS",
+        provider {
+            "https://crowdin.com/project/ab-download-manager"
         }
     )
     buildConfigField(
