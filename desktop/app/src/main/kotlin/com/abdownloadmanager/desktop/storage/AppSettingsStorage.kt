@@ -14,7 +14,7 @@ import java.io.File
 @Serializable
 data class AppSettingsModel(
     val theme: String = "dark",
-    val language: String = "en",
+    val language: String? = null,
     val uiScale: Float? = null,
     val mergeTopBarWithTitleBar: Boolean = false,
     val threadCount: Int = 8,
@@ -34,6 +34,8 @@ data class AppSettingsModel(
     val browserIntegrationPort: Int = 15151,
     val trackDeletedFilesOnDisk: Boolean = false,
     val useBitsForSpeed: Boolean = false,
+    val ignoreSSLCertificates: Boolean = false,
+    val useCategoryByDefault: Boolean = true,
 ) {
     companion object {
         val default: AppSettingsModel get() = AppSettingsModel()
@@ -60,6 +62,8 @@ data class AppSettingsModel(
             val browserIntegrationPort = intKeyOf("browserIntegrationPort")
             val trackDeletedFilesOnDisk = booleanKeyOf("trackDeletedFilesOnDisk")
             val useBitsForSpeed = booleanKeyOf("useBitsForSpeed")
+            val ignoreSSLCertificates = booleanKeyOf("ignoreSSLCertificates")
+            val useCategoryByDefault = booleanKeyOf("useCategoryByDefault")
         }
 
 
@@ -89,13 +93,15 @@ data class AppSettingsModel(
                 browserIntegrationPort = source.get(Keys.browserIntegrationPort) ?: default.browserIntegrationPort,
                 trackDeletedFilesOnDisk = source.get(Keys.trackDeletedFilesOnDisk) ?: default.trackDeletedFilesOnDisk,
                 useBitsForSpeed = source.get(Keys.useBitsForSpeed) ?: default.useBitsForSpeed,
+                ignoreSSLCertificates = source.get(Keys.ignoreSSLCertificates) ?: default.ignoreSSLCertificates,
+                useCategoryByDefault = source.get(Keys.useCategoryByDefault) ?: default.useCategoryByDefault,
             )
         }
 
         override fun set(source: MapConfig, focus: AppSettingsModel): MapConfig {
             return source.apply {
                 put(Keys.theme, focus.theme)
-                put(Keys.language, focus.language)
+                putNullable(Keys.language, focus.language)
                 putNullable(Keys.uiScale, focus.uiScale)
                 put(Keys.mergeTopBarWithTitleBar, focus.mergeTopBarWithTitleBar)
                 put(Keys.threadCount, focus.threadCount)
@@ -113,6 +119,8 @@ data class AppSettingsModel(
                 put(Keys.browserIntegrationPort, focus.browserIntegrationPort)
                 put(Keys.trackDeletedFilesOnDisk, focus.trackDeletedFilesOnDisk)
                 put(Keys.useBitsForSpeed, focus.useBitsForSpeed)
+                put(Keys.ignoreSSLCertificates, focus.ignoreSSLCertificates)
+                put(Keys.useCategoryByDefault, focus.useCategoryByDefault)
             }
         }
     }
@@ -127,6 +135,15 @@ private val uiScaleLens: Lens<AppSettingsModel, Float?>
             s.copy(uiScale = f)
         }
     )
+private val languageLens: Lens<AppSettingsModel, String?>
+    get() = Lens(
+        get = {
+            it.language
+        },
+        set = { s, f ->
+            s.copy(language = f)
+        }
+    )
 
 class AppSettingsStorage(
     settings: DataStore<MapConfig>,
@@ -134,7 +151,7 @@ class AppSettingsStorage(
     ConfigBaseSettingsByMapConfig<AppSettingsModel>(settings, AppSettingsModel.ConfigLens),
     LanguageStorage {
     var theme = from(AppSettingsModel.theme)
-    override val selectedLanguage = from(AppSettingsModel.language)
+    override val selectedLanguage = from(languageLens)
     var uiScale = from(uiScaleLens)
     var mergeTopBarWithTitleBar = from(AppSettingsModel.mergeTopBarWithTitleBar)
     val threadCount = from(AppSettingsModel.threadCount)
@@ -152,4 +169,6 @@ class AppSettingsStorage(
     val browserIntegrationPort = from(AppSettingsModel.browserIntegrationPort)
     val trackDeletedFilesOnDisk = from(AppSettingsModel.trackDeletedFilesOnDisk)
     val useBitsForSpeed = from(AppSettingsModel.useBitsForSpeed)
+    val ignoreSSLCertificates = from(AppSettingsModel.ignoreSSLCertificates)
+    val useCategoryByDefault = from(AppSettingsModel.useCategoryByDefault)
 }

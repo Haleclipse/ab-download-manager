@@ -1,5 +1,6 @@
 package com.abdownloadmanager.desktop.pages.editdownload
 
+import com.abdownloadmanager.desktop.pages.settings.ThreadCountLimitation
 import com.abdownloadmanager.desktop.pages.settings.configurable.FileChecksumConfigurable
 import com.abdownloadmanager.desktop.pages.settings.configurable.IntConfigurable
 import com.abdownloadmanager.desktop.pages.settings.configurable.SpeedLimitConfigurable
@@ -195,11 +196,11 @@ class EditDownloadState(
                 },
                 unMap = {
                     copy(
-                        preferredConnectionCount = it.takeIf { it > 1 }
+                        preferredConnectionCount = it.takeIf { it >= 1 }
                     )
                 }
             ),
-            range = 0..32,
+            range = 0..ThreadCountLimitation.MAX_ALLOWED_THREAD_COUNT,
             describe = {
                 if (it == 0) Res.string.use_global_settings.asStringSource()
                 else Res.string.download_item_settings_thread_count_describe
