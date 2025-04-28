@@ -1,3 +1,5 @@
+# .github/workflows/publish.yml
+
 on:
   push:
     tags:
@@ -61,18 +63,18 @@ jobs:
         continue-on-error: true
         run: |
           ./gradlew
-        # 在 Windows 上使用 PowerShell 或默认 shell，其他使用 bash
-        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+        # 修正: 使用三元运算符选择 shell
+        shell: ${{ runner.os == 'Windows' ? 'pwsh' : 'bash' }} # <--- 修正这里 (原 Line 65)
 
       - name: 📦 Build package for current OS using gradle # 使用 Gradle 构建包
-        # 在 Windows 上使用 PowerShell 或默认 shell，其他使用 bash
-        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+        # 修正: 使用三元运算符选择 shell
+        shell: ${{ runner.os == 'Windows' ? 'pwsh' : 'bash' }} # <--- 修正这里 (原 Line 69)
         run: |
           ./gradlew desktop:app:createReleaseFolderForCi
 
       - name: 🛑 Release Gradle to unlock cache files # 停止 Gradle 守护进程以解锁缓存
-        # 在 Windows 上使用 PowerShell 或默认 shell，其他使用 bash
-        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+        # 修正: 使用三元运算符选择 shell
+        shell: ${{ runner.os == 'Windows' ? 'pwsh' : 'bash' }} # <--- 修正这里 (涉及 ./gradlew 的步骤都应检查)
         run: |
           ./gradlew --stop
 
