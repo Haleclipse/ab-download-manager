@@ -12,24 +12,21 @@ jobs:
   create-packages:
     strategy:
       matrix:
-        os: [ "ubuntu-latest" , "windows-latest" ]
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Setting up Jetbrains Runtime
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          jdksPath="$HOME/.jdks"
-          os=$(echo "${{ runner.os }}-${{ runner.arch }}" | tr "[:upper:]" "[:lower:]")
-          jdkFileName="jbrsdk-17.0.12-$os-b1207.37"
-          jdkFileNameWithExt="$jdkFileName.tar.gz"
-          link="https://cache-redirector.jetbrains.com/intellij-jbr/$jdkFileNameWithExt"
-          curl --location "$link" --create-dirs --output "$jdksPath/$jdkFileNameWithExt"
-          tar -xf "$jdksPath/$jdkFileNameWithExt" -C "$jdksPath"
-          echo "JAVA_HOME=$jdksPath/$jdkFileName" >> "$GITHUB_ENV"
-          echo "PATH=$jdksPath/$jdkFileName/bin:$PATH" >> "$GITHUB_ENV"
+      - name: setup jdk
+        uses: actions/setup-java@v4
+        with:
+          distribution: "adopt"
+          java-version: "17"
+          architecture: x64
+
+      - name: grant execute permission for gradlew
+        run: chmod +x gradlew
+
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
         with:
@@ -38,7 +35,12 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ matrix.os }}-gradle
           enableCrossOsArchive: true
+
       - name: Gradle
+#          at the current version of compose plugin
+#          first attempt to init gradle always fails because of "BuildScopeServices has been closed"
+#          remove this after this bug is fixed
+        continue-on-error: true
         run: |
           ./gradlew
         shell: "bash"
