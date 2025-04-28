@@ -1,95 +1,124 @@
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+*"
-  workflow_dispatch:
-
+      - "v[0-9]+.[0-9]+.[0-9]+*" # 匹配 vX.Y.Z 格式的标签
+  workflow_dispatch: # 允许手动触发
 
 permissions:
-  contents: write
+  contents: write # 需要写权限来创建 GitHub Release
 
 jobs:
   create-packages:
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
-    runs-on: ${{ matrix.os }}
+        # 定义构建矩阵，包含操作系统、架构和用于标识的名称
+        include:
+          - os: ubuntu-latest
+            arch: x64
+            name: ubuntu-x64
+          - os: windows-latest
+            arch: x64
+            name: windows-x64
+          - os: macos-latest # 通常是 Intel (x64)
+            arch: x64
+            name: macos-x64
+          - os: macos-14 # 这是当前的 ARM64 (Apple Silicon) runner
+            arch: arm64
+            name: macos-arm64
+
+    runs-on: ${{ matrix.os }} # 根据矩阵选择运行器
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: setup jdk
+      - name: 🛒 Checkout # 检出代码
+        uses: actions/checkout@v4 # 更新到 v4
+
+      - name: ☕ Setup JDK 17 # 设置 Java 环境
         uses: actions/setup-java@v4
         with:
           distribution: "adopt"
           java-version: "17"
-          architecture: x64
+          architecture: ${{ matrix.arch }} # 根据矩阵选择 JDK 架构 (x64 或 arm64)
 
-      - name: grant execute permission for gradlew
+      - name: ✨ Grant execute permission for gradlew # 赋予 gradlew 执行权限
+        # 对于非 Windows 系统执行 chmod
+        if: runner.os != 'Windows'
         run: chmod +x gradlew
 
-      - name: Cache Gradle Dependencies
+      - name: 💾 Cache Gradle Dependencies # 缓存 Gradle 依赖
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ matrix.os }}-gradle
-          enableCrossOsArchive: true
+          # 使用更具体的缓存键，包含操作系统和架构
+          key: ${{ matrix.name }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ matrix.name }}-gradle-
+          enableCrossOsArchive: true # 允许跨操作系统恢复缓存 (对某些场景有帮助)
 
-      - name: Gradle
-#          at the current version of compose plugin
-#          first attempt to init gradle always fails because of "BuildScopeServices has been closed"
-#          remove this after this bug is fixed
+      - name: 🛠️ Gradle Initial Run (Workaround) # Gradle 首次运行 (临时解决 Compose 插件问题)
+        # 当前版本的 Compose 插件首次初始化 Gradle 可能会失败
+        # 等待此 bug 修复后可移除 continue-on-error
         continue-on-error: true
         run: |
           ./gradlew
-        shell: "bash"
+        # 在 Windows 上使用 PowerShell 或默认 shell，其他使用 bash
+        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
 
-      - name: Build package for current OS using gradle
-        shell: bash
+      - name: 📦 Build package for current OS using gradle # 使用 Gradle 构建包
+        # 在 Windows 上使用 PowerShell 或默认 shell，其他使用 bash
+        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
         run: |
           ./gradlew desktop:app:createReleaseFolderForCi
 
-      - name: Release Gradle to unlock cache files
-        shell: bash
+      - name: 🛑 Release Gradle to unlock cache files # 停止 Gradle 守护进程以解锁缓存
+        # 在 Windows 上使用 PowerShell 或默认 shell，其他使用 bash
+        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
         run: |
-          ./gradlew -stop
+          ./gradlew --stop
 
-      - name: Upload output to artifacts
+      - name: ⬆️ Upload output to artifacts # 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          path: ./build/ci-release
-          name: app-${{ matrix.os }}
+          path: ./build/ci-release # 构建产物路径
+          name: app-${{ matrix.name }} # 使用包含架构的名称命名产物
 
   release:
-    runs-on: "ubuntu-latest"
-    needs: ["create-packages"]
+    runs-on: ubuntu-latest # 发布步骤在 Ubuntu 上运行
+    needs: ["create-packages"] # 依赖于打包作业
+    # 仅当触发事件是打标签时运行
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: "actions/download-artifact@v4"
-        name: "Download All Artifacts Into One Directory"
+      - name: ⬇️ Download All Artifacts # 下载所有构建产物
+        uses: actions/download-artifact@v4
         with:
-          path: release
+          path: release # 下载到 release 目录
+          # 使用通配符匹配所有 app- 开头的产物
           pattern: app-*
-          merge-multiple: true
+          merge-multiple: true # 将所有匹配的产物合并到同一目录
 
-      - name: Version Info
+      - name: 🏷️ Version Info # 获取版本信息
         id: version
         uses: nowsprinting/check-version-format-action@v3
         with:
-          prefix: "v"
+          prefix: "v" # 版本前缀
 
-      - name: "Show the output tree of release"
+      - name: 🌳 Show the output tree of release # 显示 release 目录结构
         run: |
-          tree .
-      - uses: softprops/action-gh-release@v2
+          tree release # 需要安装 tree 工具 (ubuntu-latest 默认包含)
+
+      - name: 🚀 Create GitHub Release # 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
+          # 如果不是稳定版本 (例如 v1.0.0-rc1)，则标记为预发布
           prerelease: ${{ !steps.version.outputs.is_stable }}
-          make_latest: legacy
-          draft: true
+          make_latest: legacy # 标记为 'latest' release 的策略
+          draft: true # 创建为草稿，方便手动检查和发布
           files: |
-            release/binaries/*
-          body_path: release/release-notes.md
-      - name: "Remove artifacts to free space"
+            release/binaries/* # 上传 release/binaries 目录下的所有文件
+          body_path: release/release-notes.md # 从文件读取发布说明
+
+      - name: 🗑️ Remove artifacts to free space # 删除构建产物以释放空间
         uses: geekyeggo/delete-artifact@v5
         with:
+          # 使用通配符删除所有 app- 开头的产物
           name: app-*
